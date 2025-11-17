@@ -28,12 +28,12 @@ describe('Evaluator', () => {
     expect(result.outputLines[0].data).toEqual([16, 17, 18, 19, 20]);
   });
 
-  test('should evaluate MA function', () => {
+  test('should evaluate MA function', async () => {
     const parser = createParser('MA3: MA(C, 3)')
     const formula = parser.parseFormula();
-    const evaluator = createEvaluator(inputData);
+    const evaluator = createEvaluator(inputData, undefined);
     
-    const result = evaluator.evaluateFormula(formula);
+    const result = await evaluator.evaluateFormula(formula);
     
     expect(result.outputLines).toHaveLength(1);
     expect(result.outputLines[0].name).toBe('MA3');
@@ -48,12 +48,12 @@ describe('Evaluator', () => {
     expect(result.outputLines[0].data[3]).toBeCloseTo(13);
   });
 
-  test('should evaluate REF function', () => {
+  test('should evaluate REF function', async () => {
     const parser = createParser('REF1: REF(C, 1)')
     const formula = parser.parseFormula();
-    const evaluator = createEvaluator(inputData);
+    const evaluator = createEvaluator(inputData, undefined);
     
-    const result = evaluator.evaluateFormula(formula);
+    const result = await evaluator.evaluateFormula(formula);
     
     expect(result.outputLines).toHaveLength(1);
     expect(result.outputLines[0].name).toBe('REF1');
@@ -66,12 +66,12 @@ describe('Evaluator', () => {
     expect(result.outputLines[0].data[2]).toBe(12);
   });
 
-  test('should evaluate SUM function', () => {
+  test('should evaluate SUM function', async () => {
     const parser = createParser('SUM2: SUM(V, 2)')
     const formula = parser.parseFormula();
-    const evaluator = createEvaluator(inputData);
+    const evaluator = createEvaluator(inputData, undefined);
     
-    const result = evaluator.evaluateFormula(formula);
+    const result = await evaluator.evaluateFormula(formula);
     
     expect(result.outputLines).toHaveLength(1);
     expect(result.outputLines[0].name).toBe('SUM2');

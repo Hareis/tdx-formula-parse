@@ -8,6 +8,7 @@ import {
   PlotStyle 
 } from './ast';
 import { InputData, OutputLineResult, FormulaResult, createOutputLineResult, createFormulaResult } from './data';
+import { FunctionRegistry, globalFunctionRegistry } from './function-registry';
 
 type Environment = Map<string, (number | null)[]>;
 
@@ -15,11 +16,13 @@ export class Evaluator {
   private inputData: InputData;
   private environment: Environment;
   private outputLines: OutputLineResult[];
+  private functionRegistry: FunctionRegistry;
 
-  constructor(inputData: InputData) {
+  constructor(inputData: InputData, functionRegistry?: FunctionRegistry) {
     this.inputData = inputData;
     this.environment = new Map();
     this.outputLines = [];
+    this.functionRegistry = functionRegistry || globalFunctionRegistry;
     this.initializeBuiltinVariables();
   }
 
@@ -182,33 +185,13 @@ export class Evaluator {
       }
     }
     
-    // 调用对应的内置函数
-    switch (name.toUpperCase()) {
-      case 'MA':
-        return this.functionMA(argValues[0], this.getNumberArg(argValues[1]));
-      case 'REF':
-        return this.functionREF(argValues[0], this.getNumberArg(argValues[1]));
-      case 'SUM':
-        return this.functionSUM(argValues[0], this.getNumberArg(argValues[1]));
-      case 'HHV':
-        return this.functionHHV(argValues[0], this.getNumberArg(argValues[1]));
-      case 'LLV':
-        return this.functionLLV(argValues[0], this.getNumberArg(argValues[1]));
-      case 'IF':
-        return this.functionIF(argValues[0], argValues[1], argValues[2]);
-      case 'CROSS':
-        return this.functionCROSS(argValues[0], argValues[1]);
-      case 'ABS':
-        return this.functionABS(argValues[0]);
-      case 'MAX':
-        return this.functionMAX(argValues[0], argValues[1]);
-      case 'MIN':
-        return this.functionMIN(argValues[0], argValues[1]);
-      case 'COUNT':
-        return this.functionCOUNT(argValues[0], this.getNumberArg(argValues[1]));
-      default:
-        throw new Error(`Unknown function: ${name}`);
+    // 从注册器中获取函数
+    const func = this.functionRegistry.getFunction(name);
+    if (!func) {
+      throw new Error(`Unknown function: ${name}`);
     }
+    
+    return func(argValues);
   }
 
   // 获取数值参数（用于周期参数）
@@ -218,204 +201,9 @@ export class Evaluator {
     if (firstValue === null) throw new Error('Numeric argument cannot be null');
     return firstValue;
   }
-
-  // ===== 内置函数实现 =====
-
-  // MA - 简单移动平均
-  private functionMA(data: (number | null)[], period: number): (number | null)[] {
-    const result: (number | null)[] = [];
-    
-    for (let i = 0; i < data.length; i++) {
-      if (i < period - 1) {
-        result.push(null);
-        continue;
-      }
-      
-      let sum = 0;
-      let count = 0;
-      
-      for (let j = i - period + 1; j <= i; j++) {
-        if (data[j] !== null) {
-          sum += data[j]!;
-          count++;
-        }
-      }
-      
-      result.push(count > 0 ? sum / count : null);
-    }
-    
-    return result;
-  }
-
-  // REF - 向前引用
-  private functionREF(data: (number | null)[], offset: number): (number | null)[] {
-    if (offset < 0) throw new Error('REF offset must be non-negative');
-    
-    return data.map((value, i) => {
-      const refIndex = i - offset;
-      return refIndex >= 0 ? data[refIndex] : null;
-    });
-  }
-
-  // SUM - 周期内求和
-  private functionSUM(data: (number | null)[], period: number): (number | null)[] {
-    const result: (number | null)[] = [];
-    
-    for (let i = 0; i < data.length; i++) {
-      if (i < period - 1) {
-        result.push(null);
-        continue;
-      }
-      
-      let sum = 0;
-      let hasValidData = false;
-      
-      for (let j = i - period + 1; j <= i; j++) {
-        if (data[j] !== null) {
-          sum += data[j]!;
-          hasValidData = true;
-        }
-      }
-      
-      result.push(hasValidData ? sum : null);
-    }
-    
-    return result;
-  }
-
-  // HHV - 周期内最高值
-  private functionHHV(data: (number | null)[], period: number): (number | null)[] {
-    const result: (number | null)[] = [];
-    
-    for (let i = 0; i < data.length; i++) {
-      if (i < period - 1) {
-        result.push(null);
-        continue;
-      }
-      
-      let maxVal: number | null = null;
-      
-      for (let j = i - period + 1; j <= i; j++) {
-        if (data[j] !== null) {
-          if (maxVal === null || data[j]! > maxVal) {
-            maxVal = data[j]!;
-          }
-        }
-      }
-      
-      result.push(maxVal);
-    }
-    
-    return result;
-  }
-
-  // LLV - 周期内最低值
-  private functionLLV(data: (number | null)[], period: number): (number | null)[] {
-    const result: (number | null)[] = [];
-    
-    for (let i = 0; i < data.length; i++) {
-      if (i < period - 1) {
-        result.push(null);
-        continue;
-      }
-      
-      let minVal: number | null = null;
-      
-      for (let j = i - period + 1; j <= i; j++) {
-        if (data[j] !== null) {
-          if (minVal === null || data[j]! < minVal) {
-            minVal = data[j]!;
-          }
-        }
-      }
-      
-      result.push(minVal);
-    }
-    
-    return result;
-  }
-
-  // IF - 条件判断
-  private functionIF(
-    condition: (number | null)[], 
-    trueValue: (number | null)[], 
-    falseValue: (number | null)[]
-  ): (number | null)[] {
-    return condition.map((cond, i) => {
-      if (cond === null || trueValue[i] === null || falseValue[i] === null) {
-        return null;
-      }
-      return cond !== 0 ? trueValue[i]! : falseValue[i]!;
-    });
-  }
-
-  // CROSS - 交叉判断
-  private functionCROSS(a: (number | null)[], b: (number | null)[]): (number | null)[] {
-    const result: (number | null)[] = [];
-    
-    for (let i = 0; i < a.length; i++) {
-      if (i === 0 || a[i] === null || b[i] === null || a[i-1] === null || b[i-1] === null) {
-        result.push(0);
-        continue;
-      }
-      
-      // 判断是否发生交叉：a从下向上穿过b
-      const cross = (a[i-1]! < b[i-1]!) && (a[i]! > b[i]!);
-      result.push(cross ? 1 : 0);
-    }
-    
-    return result;
-  }
-
-  // ABS - 绝对值
-  private functionABS(data: (number | null)[]): (number | null)[] {
-    return data.map(value => value === null ? null : Math.abs(value));
-  }
-
-  // MAX - 最大值
-  private functionMAX(a: (number | null)[], b: (number | null)[]): (number | null)[] {
-    return a.map((valA, i) => {
-      const valB = b[i];
-      if (valA === null || valB === null) return null;
-      return Math.max(valA, valB);
-    });
-  }
-
-  // MIN - 最小值
-  private functionMIN(a: (number | null)[], b: (number | null)[]): (number | null)[] {
-    return a.map((valA, i) => {
-      const valB = b[i];
-      if (valA === null || valB === null) return null;
-      return Math.min(valA, valB);
-    });
-  }
-
-  // COUNT - 条件成立次数统计
-  private functionCOUNT(condition: (number | null)[], period: number): (number | null)[] {
-    const result: (number | null)[] = [];
-    
-    for (let i = 0; i < condition.length; i++) {
-      if (i < period - 1) {
-        result.push(null);
-        continue;
-      }
-      
-      let count = 0;
-      
-      for (let j = i - period + 1; j <= i; j++) {
-        if (condition[j] !== null && condition[j]! !== 0) {
-          count++;
-        }
-      }
-      
-      result.push(count);
-    }
-    
-    return result;
-  }
 }
 
 // 创建求值器实例
-export function createEvaluator(inputData: InputData): Evaluator {
-  return new Evaluator(inputData);
+export function createEvaluator(inputData: InputData, functionRegistry?: FunctionRegistry): Evaluator {
+  return new Evaluator(inputData, functionRegistry);
 }
