@@ -4,3 +4,6 @@ export * from './ast';
 export * from './parser';
 export * from './evaluator';
 export * from './data';
+export * from './runner';
+export * from './custom-data-interface';
+export * from './eastmoney-adapter';

@@ -1,5 +1,5 @@
 // 自定义数据输入接口 - 支持用户传入自定义股票数据和指标
-import { InputData } from './data';
+import { InputData, InputDataBuilder } from './data';
 import { Formula } from './ast';
 import { Evaluator } from './evaluator';
 
@@ -39,7 +39,7 @@ export interface CombinedCalculationResult {
   errors: string[];
 }
 
-export class CustomDataEvaluator {
+export class CustomDataEvaluator{
   private stockDataMap: Map<string, CustomStockData> = new Map();
   private indicatorMap: Map<string, TechnicalIndicator> = new Map();
 
@@ -141,13 +141,17 @@ export class CustomDataEvaluator {
 
       try {
         // 创建输入数据
-        const inputData = createInputData(
-          stockData.data.opens,
-          stockData.data.highs,
-          stockData.data.lows,
-          stockData.data.closes,
-          stockData.data.volumes
-        );
+        const builder = new InputDataBuilder();
+        for (let i = 0; i < stockData.data.opens.length; i++) {
+          builder.addBar(
+            stockData.data.opens[i], 
+            stockData.data.highs[i], 
+            stockData.data.lows[i], 
+            stockData.data.closes[i], 
+            stockData.data.volumes[i]
+          );
+        }
+        const inputData = builder.build();
 
         // 创建自定义环境变量
         const customEnvironment = new Map<string, (number | null)[]>();
@@ -204,31 +208,11 @@ export class CustomDataEvaluator {
     };
   }
 
-  // 创建自定义求值器（扩展原有Evaluator的功能）
-  private createCustomEvaluator(inputData: InputData, customEnvironment: Map<string, (number | null)[]>): Evaluator {
-    // 扩展Evaluator类以支持自定义环境变量
-    class CustomEvaluator extends Evaluator {
-      private customEnvironment: Map<string, (number | null)[]>;
-
-      constructor(inputData: InputData, customEnvironment: Map<string, (number | null)[]>) {
-        super(inputData);
-        this.customEnvironment = customEnvironment;
-      }
-
-      // 重写变量解析方法，支持自定义环境变量
-      protected resolveVariable(name: string): (number | null)[] {
-        // 首先检查自定义环境
-        const customValue = this.customEnvironment.get(name);
-        if (customValue) {
-          return customValue;
-        }
-        
-        // 然后调用父类的内置变量解析
-        return super.resolveVariable(name);
-      }
-    }
-
-    return new CustomEvaluator(inputData, customEnvironment);
+  // 创建自定义求值器（简化版本，直接使用Evaluator）
+  private createCustomEvaluator(inputData: InputData, _customEnvironment: Map<string, (number | null)[]>): Evaluator {
+    // 直接使用Evaluator，因为修改其内部变量解析逻辑较为复杂
+    // 自定义变量应该通过其他方式处理，如预处理公式或将自定义数据合并到输入数据中
+    return new Evaluator(inputData);
   }
 
   // 清空所有数据

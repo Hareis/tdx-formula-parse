@@ -49,7 +49,7 @@ class MacNotificationProvider extends NotificationProvider {
       return new Promise((resolve) => {
         const child = spawn('osascript', ['-e', script]);
         
-        child.on('close', (code) => {
+        child.on('close', (code: number) => {
           if (code === 0) {
             resolve({ success: true, platform: 'macOS' });
           } else {
@@ -57,7 +57,7 @@ class MacNotificationProvider extends NotificationProvider {
           }
         });
         
-        child.on('error', (error) => {
+        child.on('error', (error: any) => {
           resolve({ success: false, error: error.message, platform: 'macOS' });
         });
         
@@ -116,7 +116,7 @@ $notification.Dispose()
       return new Promise((resolve) => {
         const child = spawn('powershell', ['-Command', script]);
         
-        child.on('close', (code) => {
+        child.on('close', (code: number) => {
           if (code === 0) {
             resolve({ success: true, platform: 'Windows' });
           } else {
@@ -124,7 +124,7 @@ $notification.Dispose()
           }
         });
         
-        child.on('error', (error) => {
+        child.on('error', (error: any) => {
           resolve({ success: false, error: error.message, platform: 'Windows' });
         });
         
@@ -163,6 +163,7 @@ class BrowserNotificationProvider extends NotificationProvider {
 
   isSupported(): boolean {
     // 检查是否在浏览器环境或支持Node.js的桌面环境
+    //@ts-ignore
     return typeof window !== 'undefined' && 'Notification' in window;
   }
 
@@ -174,6 +175,7 @@ class BrowserNotificationProvider extends NotificationProvider {
 
       // 请求权限
       if (!this.hasPermission) {
+        //@ts-ignore
         const permission = await Notification.requestPermission();
         this.hasPermission = permission === 'granted';
       }
@@ -181,7 +183,7 @@ class BrowserNotificationProvider extends NotificationProvider {
       if (!this.hasPermission) {
         return { success: false, error: 'Notification permission denied', platform: 'Browser' };
       }
-
+      //@ts-ignore
       const notification = new Notification(options.title, {
         body: options.message,
         icon: options.icon,

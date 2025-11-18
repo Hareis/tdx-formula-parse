@@ -8,7 +8,7 @@ import {
   PlotStyle 
 } from './ast';
 import { InputData, OutputLineResult, FormulaResult, createOutputLineResult, createFormulaResult } from './data';
-import { FunctionRegistry, globalFunctionRegistry } from './function-registry';
+import { FunctionRegistry, globalFunctionRegistry, DefaultFunctionRegistry } from './function-registry';
 
 type Environment = Map<string, (number | null)[]>;
 
@@ -22,7 +22,37 @@ export class Evaluator {
     this.inputData = inputData;
     this.environment = new Map();
     this.outputLines = [];
-    this.functionRegistry = functionRegistry || globalFunctionRegistry;
+    
+    // 创建组合注册器：外部注册器扩展全局注册器，而不是二选一
+    if (functionRegistry) {
+      // 如果提供了外部注册器，创建一个新的组合注册器
+      // 这样外部注册器可以访问全局注册器的所有函数
+      const combinedRegistry = new DefaultFunctionRegistry();
+      
+      // 先将全局注册器的函数复制过来
+      const globalFuncs = globalFunctionRegistry.getAllFunctionNames();
+      for (const funcName of globalFuncs) {
+        const func = globalFunctionRegistry.getFunction(funcName);
+        if (func) {
+          combinedRegistry.registerFunction(funcName, func);
+        }
+      }
+      
+      // 再添加外部注册器的函数（如果同名会覆盖）
+      const externalFuncs = functionRegistry.getAllFunctionNames();
+      for (const funcName of externalFuncs) {
+        const func = functionRegistry.getFunction(funcName);
+        if (func) {
+          combinedRegistry.registerFunction(funcName, func);
+        }
+      }
+      
+      this.functionRegistry = combinedRegistry;
+    } else {
+      // 如果没有提供外部注册器，使用全局注册器
+      this.functionRegistry = globalFunctionRegistry;
+    }
+    
     this.initializeBuiltinVariables();
   }
 

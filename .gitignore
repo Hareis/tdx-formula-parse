@@ -88,3 +88,4 @@ test-debug.js
 test-mac-notification.js
 test-notification-full.js
 test-notification-mac.ts
+test/
