@@ -3,7 +3,7 @@ import { createParser } from './parser';
 import { InputData, InputDataBuilder } from './data';
 import { createEvaluator } from './evaluator';
 import { CustomStockData } from './custom-data-interface';
-import { fetchStockData, fetchMultipleStockData } from './eastmoney-adapter';
+import { fetchStockData, fetchMultipleStockData, TimeFrame } from './eastmoney-adapter';
 import * as workerpool from 'workerpool';
 import path from 'path';
 import os from 'os';
@@ -142,10 +142,11 @@ export class FormulaRunner {
     formulaText: string,
     symbol: string,
     startDate: string,
-    endDate: string
+    endDate: string,
+    timeFrame?: TimeFrame
   ): Promise<RunResult> {
     try {
-      const stockData = await fetchStockData(symbol, startDate, endDate);
+      const stockData = await fetchStockData(symbol, startDate, endDate, timeFrame);
       const simpleData = this.convertToSimpleData(stockData);
       return await this.runFormula(formulaText, simpleData);
     } catch (error) {
@@ -161,10 +162,11 @@ export class FormulaRunner {
     formulaText: string,
     symbols: string[],
     startDate: string,
-    endDate: string
+    endDate: string,
+    timeFrame?: TimeFrame
   ): Promise<BatchRunResult> {
     try {
-      const stockDataList = await fetchMultipleStockData(symbols, startDate, endDate);
+      const stockDataList = await fetchMultipleStockData(symbols, startDate, endDate, timeFrame);
       const simpleDataList = stockDataList.map((data) => this.convertToSimpleData(data));
       return await this.runBatchFormula(formulaText, simpleDataList);
     } catch (error) {
@@ -428,11 +430,12 @@ export async function runWithSymbol(
   symbol: string,
   startDate: string,
   endDate: string,
+  timeFrame?: TimeFrame,
   options?: RunnerOptions
 ): Promise<RunResult> {
   const runner = createRunner(options);
   try {
-    return await runner.runWithSymbol(formulaText, symbol, startDate, endDate);
+    return await runner.runWithSymbol(formulaText, symbol, startDate, endDate, timeFrame);
   } finally {
     await runner.close();
   }
@@ -443,11 +446,12 @@ export async function runBatchWithSymbols(
   symbols: string[],
   startDate: string,
   endDate: string,
+  timeFrame?: TimeFrame,
   options?: RunnerOptions
 ): Promise<BatchRunResult> {
   const runner = createRunner(options);
   try {
-    return await runner.runBatchWithSymbols(formulaText, symbols, startDate, endDate);
+    return await runner.runBatchWithSymbols(formulaText, symbols, startDate, endDate, timeFrame);
   } finally {
     await runner.close();
   }

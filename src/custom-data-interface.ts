@@ -2,10 +2,12 @@
 import { InputData, InputDataBuilder } from './data';
 import { Formula } from './ast';
 import { Evaluator } from './evaluator';
+import { TimeFrame } from './eastmoney-adapter';
 
 export interface CustomStockData {
   symbol: string;
   name?: string;
+  timeframe?: TimeFrame;     // 时间周期
   data: {
     date: string[];           // 日期序列
     opens: number[];         // 开盘价

@@ -148,6 +148,70 @@ const fastResult = await runWithSymbol(
 - ✅ 自动内存管理，防止内存泄漏
 - ✅ 错误隔离，单个计算失败不影响其他任务
 
+### ⏱️ 支持的时间周期
+
+东方财富API现在支持多种K线周期：
+
+```typescript
+import { TimeFrame, runWithSymbol } from 'tdx-formula-typescript';
+
+// 支持的时间周期
+enum TimeFrame {
+  MIN_1 = '1',      // 1分钟
+  MIN_5 = '5',      // 5分钟  
+  MIN_15 = '15',    // 15分钟
+  MIN_30 = '30',    // 30分钟
+  MIN_60 = '60',    // 60分钟
+  DAILY = '101',     // 日线（默认）
+  WEEKLY = '102',    // 周线
+  MONTHLY = '103'     // 月线
+}
+
+// 使用不同时间周期
+// 5分钟K线分析
+const min5Result = await runWithSymbol(
+  'MA20: MA(C, 20); SIGNAL: CROSS(C, MA20)',
+  '1.600460',
+  '20241001',
+  '20241231',
+  TimeFrame.MIN_5  // 5分钟线
+);
+
+// 60分钟K线分析  
+const hour1Result = await runWithSymbol(
+  'RSI14: RSI(C, 14)',
+  '0.000001',
+  '20240101', 
+  '20241231',
+  TimeFrame.MIN_60  // 60分钟线
+);
+
+// 日线分析（默认）
+const dailyResult = await runWithSymbol(
+  'BOLL20: BOLL(C, 20, 2)',
+  '1.000001',
+  '20240101',
+  '20241231'
+  // 不指定时间周期，默认为日线
+);
+
+// 周线分析
+const weeklyResult = await runWithSymbol(
+  'MACD: MACD(C, 12, 26, 9)',
+  '1.600000',
+  '20230101',
+  '20241231',
+  TimeFrame.WEEKLY  // 周线
+);
+```
+
+**数据量对比示例：**
+- 1分钟：~10,000条/周
+- 5分钟：~2,000条/周  
+- 60分钟：~170条/周
+- 日线：~22条/月
+- 周线：~5条/月
+
 ### 1. 东方财富API数据示例
 
 ```typescript

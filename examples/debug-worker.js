@@ -1,5 +1,5 @@
 // 调试Worker问题的简单测试
-const { FormulaRunner } = require('/Users/hareis/Documents/webapp/stock-dog-new-1/dist/runner.js');
+const { FormulaRunner } = require('../dist/runner.js');
 
 const testData = {
   symbol: '600000',

@@ -26,6 +26,18 @@ interface EastMoneyResponse {
   }[];
 }
 
+// 时间周期枚举
+export enum TimeFrame {
+  MIN_1 = '1',      // 1分钟
+  MIN_5 = '5',      // 5分钟
+  MIN_15 = '15',    // 15分钟
+  MIN_30 = '30',    // 30分钟
+  MIN_60 = '60',    // 60分钟
+  DAILY = '101',     // 日线
+  WEEKLY = '102',    // 周线
+  MONTHLY = '103'     // 月线
+}
+
 // K线数据结构
 interface KLineData {
   date: string;
@@ -43,7 +55,7 @@ interface KLineData {
 
 // 数据适配器接口
 interface DataAdapter {
-  fetchData(symbol: string, startDate: string, endDate: string): Promise<CustomStockData>;
+  fetchData(symbol: string, startDate: string, endDate: string, timeFrame?: TimeFrame): Promise<CustomStockData>;
   isSupported(symbol: string): boolean;
   getAdapterName(): string;
 }
@@ -63,7 +75,7 @@ export class EastMoneyDataAdapter implements DataAdapter {
     return pattern.test(symbol);
   }
 
-  async fetchData(symbol: string, startDate: string, endDate: string): Promise<CustomStockData> {
+  async fetchData(symbol: string, startDate: string, endDate: string, timeFrame?: TimeFrame): Promise<CustomStockData> {
     if (!this.isSupported(symbol)) {
       throw new Error(`Unsupported symbol format: ${symbol}`);
     }
@@ -75,13 +87,13 @@ export class EastMoneyDataAdapter implements DataAdapter {
       url.searchParams.set('fields1', 'f1,f2,f3,f4,f5,f6');
       url.searchParams.set('fields2', 'f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61');
       url.searchParams.set('ut', '7eea3edcaed734bea9cbfc24409ed989');
-      url.searchParams.set('klt', '101'); // 日K线
+      url.searchParams.set('klt', timeFrame || TimeFrame.DAILY); // 支持时间周期，默认日线
       url.searchParams.set('fqt', '1');   // 前复权
       url.searchParams.set('beg', startDate.replace(/-/g, ''));
       url.searchParams.set('end', endDate.replace(/-/g, ''));
       url.searchParams.set('_', Date.now().toString());
 
-      console.log(`Fetching data from: ${url.toString()}`);
+      console.log(`Fetching data from: ${url.toString()} (timeframe: ${timeFrame || TimeFrame.DAILY})`);
 
       // 发送请求
       const response = await axios.get<EastMoneyResponse>(url.toString(), {
@@ -114,7 +126,7 @@ export class EastMoneyDataAdapter implements DataAdapter {
       const klineData = this.parseKLines(klines);
       
       // 转换为CustomStockData格式
-      return this.convertToCustomStockData(symbol, stockInfo.name, klineData);
+      return this.convertToCustomStockData(symbol, stockInfo.name, klineData, timeFrame);
 
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -149,7 +161,7 @@ export class EastMoneyDataAdapter implements DataAdapter {
   }
 
   // 转换为CustomStockData格式
-  private convertToCustomStockData(symbol: string, name: string, klineData: KLineData[]): CustomStockData {
+  private convertToCustomStockData(symbol: string, name: string, klineData: KLineData[], timeFrame?: TimeFrame): CustomStockData {
     // 按日期排序（从旧到新）
     klineData.sort((a, b) => a.date.localeCompare(b.date));
 
@@ -172,6 +184,7 @@ export class EastMoneyDataAdapter implements DataAdapter {
     return {
       symbol: symbol,
       name: name,
+      timeframe: timeFrame || TimeFrame.DAILY, // 添加时间周期信息
       data: {
         date: dates,
         opens: opens,
@@ -250,14 +263,15 @@ export class StockDataService {
   async getStockData(
     symbol: string, 
     startDate: string, 
-    endDate: string, 
+    endDate: string,
+    timeFrame?: TimeFrame,
     adapterName?: string
   ): Promise<CustomStockData> {
     const adapter = adapterName 
       ? this.adapterFactory.getAdapter(adapterName)
       : this.adapterFactory.autoSelectAdapter(symbol);
 
-    return adapter.fetchData(symbol, startDate, endDate);
+    return adapter.fetchData(symbol, startDate, endDate, timeFrame);
   }
 
   // 批量获取股票数据
@@ -265,13 +279,14 @@ export class StockDataService {
     symbols: string[],
     startDate: string,
     endDate: string,
+    timeFrame?: TimeFrame,
     adapterName?: string
   ): Promise<CustomStockData[]> {
     const results: CustomStockData[] = [];
     
     for (const symbol of symbols) {
       try {
-        const data = await this.getStockData(symbol, startDate, endDate, adapterName);
+        const data = await this.getStockData(symbol, startDate, endDate, timeFrame, adapterName);
         results.push(data);
       } catch (error) {
         console.error(`Failed to fetch data for ${symbol}:`, error);
@@ -296,15 +311,17 @@ export const dataAdapterFactory = new DataAdapterFactory();
 export async function fetchStockData(
   symbol: string, 
   startDate: string, 
-  endDate: string
+  endDate: string,
+  timeFrame?: TimeFrame
 ): Promise<CustomStockData> {
-  return stockDataService.getStockData(symbol, startDate, endDate);
+  return stockDataService.getStockData(symbol, startDate, endDate, timeFrame);
 }
 
 export async function fetchMultipleStockData(
   symbols: string[], 
   startDate: string, 
-  endDate: string
+  endDate: string,
+  timeFrame?: TimeFrame
 ): Promise<CustomStockData[]> {
-  return stockDataService.getBatchStockData(symbols, startDate, endDate);
+  return stockDataService.getBatchStockData(symbols, startDate, endDate, timeFrame);
 }

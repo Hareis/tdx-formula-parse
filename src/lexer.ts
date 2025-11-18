@@ -8,7 +8,7 @@ export class Lexer {
   private column: number;
 
   constructor(input: string) {
-    this.input = input;
+    this.input = input.replace(/;/g, '');
     this.position = 0;
     this.line = 1;
     this.column = 1;
