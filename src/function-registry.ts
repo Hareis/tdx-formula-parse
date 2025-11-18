@@ -1,5 +1,3 @@
-// 函数注册系统 - 支持用户自定义函数注册
-import { Expr } from './ast';
 
 export type FunctionType = (args: (number | null)[][]) => (number | null)[];
 

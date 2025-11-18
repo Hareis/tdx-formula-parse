@@ -8,6 +8,8 @@ import * as workerpool from 'workerpool';
 import path from 'path';
 import os from 'os';
 import { cwd } from 'process';
+import { DefaultFunctionRegistry, FunctionRegistry } from './function-registry';
+import { integrateIndicatorsPackage } from './indicators-integration';
 
 // 简化的输入数据接口
 export interface SimpleStockData {
@@ -76,7 +78,7 @@ export class FormulaRunner {
 
   // 初始化Worker Pool
   private initializePool() {
-    const workerPath = path.join(cwd(),'src', 'formula-worker.js');
+    const workerPath = path.join(cwd(), 'src', 'formula-worker.js');
     this.pool = workerpool.pool(workerPath, {
       minWorkers: 1,
       maxWorkers: this.options.workerCount,
@@ -184,10 +186,16 @@ export class FormulaRunner {
   private async runInMainThread(
     formulaText: string,
     data: SimpleStockData,
-    startTime: number
+    startTime: number,
+    functionRegistry?: FunctionRegistry
   ): Promise<RunResult> {
     const inputData = this.createInputData(data);
-    const evaluator = createEvaluator(inputData);
+    
+    if (!functionRegistry) {
+      functionRegistry = new DefaultFunctionRegistry();
+      integrateIndicatorsPackage(functionRegistry);
+    }
+    const evaluator = createEvaluator(inputData, functionRegistry);
 
     const parser = createParser(formulaText);
     const formula = parser.parseFormula();
@@ -314,8 +322,8 @@ export class FormulaRunner {
               values: output.values
             });
           });
-        }else{
-          console.log((workerResult as any).error)
+        } else {
+          console.log((workerResult as any).error);
         }
       }
 

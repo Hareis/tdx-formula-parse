@@ -9,6 +9,7 @@ import {
 } from './ast';
 import { InputData, OutputLineResult, FormulaResult, createOutputLineResult, createFormulaResult } from './data';
 import { FunctionRegistry, globalFunctionRegistry, DefaultFunctionRegistry } from './function-registry';
+import { integrateIndicatorsPackage } from './indicators-integration';
 
 type Environment = Map<string, (number | null)[]>;
 
@@ -234,6 +235,6 @@ export class Evaluator {
 }
 
 // 创建求值器实例
-export function createEvaluator(inputData: InputData, functionRegistry?: FunctionRegistry): Evaluator {
+export function createEvaluator(inputData: InputData, functionRegistry?: FunctionRegistry): Evaluator {  
   return new Evaluator(inputData, functionRegistry);
 }
