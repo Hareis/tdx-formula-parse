@@ -12,7 +12,7 @@
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "prepublishOnly": "npm run build",
-    "app1":"ts-node ./apps/app1"
+    "app1": "ts-node ./apps/app1"
   },
   "keywords": [
     "tdx",
@@ -30,6 +30,7 @@
     "@types/babel__traverse": "^7.28.0",
     "@types/jest": "^29.5.0",
     "@types/node": "^20.0.0",
+    "@types/node-schedule": "^2.1.8",
     "@types/semver": "^7.7.1",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
@@ -47,6 +48,7 @@
     "@ixjb94/indicators": "^1.2.4",
     "@types/axios": "^0.14.4",
     "axios": "^1.13.2",
+    "node-schedule": "^2.1.1",
     "workerpool": "^10.0.0"
   }
 }
