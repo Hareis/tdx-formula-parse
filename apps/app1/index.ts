@@ -19,7 +19,7 @@ async function test1() {
 async function getFormulaContent() {
   // 直接使用5日移动平均线的公式，避免变量引用问题
   const content = await readFile(path.join(__dirname, '指标.txt'));
-  return content.toString('utf-8');
+  return content.toString('utf-8').replace(/;/g,'');
 }
 
 if (require.main === module) {
