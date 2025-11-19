@@ -76,7 +76,9 @@ export class Evaluator {
         this.outputLines.push(result);
       }
     }
-
+    if(!this.outputLines.length){
+      throw new Error('必须要有一个输出值')
+    }
     return createFormulaResult(this.outputLines);
   }
 

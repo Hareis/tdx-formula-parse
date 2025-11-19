@@ -3,11 +3,26 @@ import { readFile } from 'fs/promises';
 import { createRunner } from '../../src/runner';
 import * as schedule from 'node-schedule';
 import path from 'path';
+import { TimeFrame } from '../../dist/eastmoney-adapter';
 
+const stockList=[
+    '1.600530',
+    '1.603116',
+    '0.000037',
+    '0.000815',
+    '1.600031',
+    '0.002507',
+    '0.000333',
+    '1.603777',
+    '1.603155',
+    '1.601139',
+    '1.600703',
+  ];
 async function start() {
   // 1. 立即执行一次测试
   console.log('执行即时测试...');
-  await runStockAnalysis();
+  
+  await runStockAnalysis(stockList);
 }
 
 async function getFormulaContent() {
@@ -37,7 +52,7 @@ function createScheduleTasks() {
       console.log(`[${now.toLocaleString()}] 执行定时股票分析任务`);
       
       try {
-        await runStockAnalysis();
+        await runStockAnalysis(stockList);
       } catch (error) {
         console.error(`[${now.toLocaleString()}] 定时任务执行失败:`, error);
       }
@@ -53,27 +68,28 @@ function createScheduleTasks() {
 }
 
 // 股票分析任务
-async function runStockAnalysis() {
+async function runStockAnalysis(symbols:string[]) {
   console.log('开始执行股票分析...');
   
-  const symbol = '1.600460'; // 士兰微，上海交易所
   const startDate = '20240101';
   const endDate = '20241231';
 
   try {
     const formula = await getFormulaContent();
-    const result = await createRunner().runWithSymbol(formula, symbol, startDate, endDate);
+    const resultsRsp = await createRunner({
+      useWorker:true,
+    }).runBatchWithSymbols(formula, symbols, startDate, endDate, TimeFrame.MIN_30);
     
     const now = new Date();
-    console.log(`[${now.toLocaleString()}] 股票 ${symbol} 分析完成:`);
-    console.log('- 结果数据长度:', result.data?.[0]?.values?.length || 0);
-    
-    // 输出最近几个计算结果作为示例
-    if (result.data?.[0]?.values) {
-      const values = result.data[0].values;
-      const recentData = values.slice(-5).filter((val: number | null) => val !== null);
-      if (recentData.length > 0) {
-        console.log('- 最近5个有效值:', recentData);
+    console.log(`[${now.toLocaleString()}] 股票分析完成:`);
+    for (const result of resultsRsp.results!) {
+      // 输出最近几个计算结果作为示例
+      if (result?.values) {
+        const values = result.values;
+        const recentData = values.slice(-10);
+        if (recentData.length > 0) {
+          console.log(result.symbol+`: 【${result.name}】 最近10个有效值:`, recentData);
+        }
       }
     }
     

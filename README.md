@@ -1,6 +1,6 @@
 # TDX公式解析器 - TypeScript版本
 
-这是一个将Rust实现的通达信(TDX)股票公式解析器完整移植到TypeScript的项目，集成了东方财富实时股票数据接口。
+这是一个将[Rust实现的通达信](https://github.com/DTrader-store/tdx-formula)(TDX)股票公式解析器完整移植到TypeScript的项目，集成了东方财富实时股票数据接口。
 
 ## 项目结构
 
@@ -492,6 +492,4 @@ MIT License
 
 ### 贡献指南
 - 遵循项目的TypeScript编码规范
-- 添加相应的单元测试
-- 更新文档说明
-- 确保所有测试通过
+- 致谢[rust实现](https://github.com/DTrader-store/tdx-formula)

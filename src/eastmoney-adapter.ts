@@ -1,6 +1,7 @@
 // 东方财富API数据适配器
 import { CustomStockData } from './custom-data-interface';
 import axios from 'axios';
+import pLimit from 'p-limit';
 
 // 东方财富API响应接口
 interface EastMoneyResponse {
@@ -64,6 +65,9 @@ interface DataAdapter {
 export class EastMoneyDataAdapter implements DataAdapter {
   private baseUrl: string = 'https://push2his.eastmoney.com/api/qt/stock/kline/get';
   private userAgent: string = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
+  
+  // 限流器：每分钟最多20个请求
+  public static rateLimiter = pLimit(20);
 
   getAdapterName(): string {
     return 'EastMoney';
@@ -75,11 +79,19 @@ export class EastMoneyDataAdapter implements DataAdapter {
     return pattern.test(symbol);
   }
 
-  async fetchData(symbol: string, startDate: string, endDate: string, timeFrame?: TimeFrame): Promise<CustomStockData> {
+async fetchData(symbol: string, startDate: string, endDate: string, timeFrame?: TimeFrame): Promise<CustomStockData> {
     if (!this.isSupported(symbol)) {
       throw new Error(`Unsupported symbol format: ${symbol}`);
     }
 
+    // 使用限流器包装API请求
+    return await EastMoneyDataAdapter.rateLimiter(async () => {
+      return await this.fetchDataInternal(symbol, startDate, endDate, timeFrame);
+    });
+  }
+
+  // 内部实际的API请求方法
+  protected async fetchDataInternal(symbol: string, startDate: string, endDate: string, timeFrame?: TimeFrame): Promise<CustomStockData> {
     try {
       // 构建API URL
       const url = new URL(this.baseUrl);
@@ -89,8 +101,8 @@ export class EastMoneyDataAdapter implements DataAdapter {
       url.searchParams.set('ut', '7eea3edcaed734bea9cbfc24409ed989');
       url.searchParams.set('klt', timeFrame || TimeFrame.DAILY); // 支持时间周期，默认日线
       url.searchParams.set('fqt', '1');   // 前复权
-      url.searchParams.set('beg', startDate.replace(/-/g, ''));
-      url.searchParams.set('end', endDate.replace(/-/g, ''));
+      url.searchParams.set('beg', timeFrame != TimeFrame.DAILY? '20':startDate.replace(/-/g, ''));
+      url.searchParams.set('end', timeFrame != TimeFrame.DAILY? '20500000':endDate.replace(/-/g, ''));
       url.searchParams.set('_', Date.now().toString());
 
       console.log(`Fetching data from: ${url.toString()} (timeframe: ${timeFrame || TimeFrame.DAILY})`);
@@ -102,6 +114,9 @@ export class EastMoneyDataAdapter implements DataAdapter {
           'Referer': 'https://quote.eastmoney.com/',
           'Accept': 'application/json, text/plain, */*',
           'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Connection': 'keep-alive',
+          'Cookie':`qgqp_b_id=5d320b10f5c86d5f3d4c974dea2e7a82; st_nvi=GkPfqWcK30fWtFDV4IGZF8d4a; nid=01d2034ae4d3ea4625d8dc8b8751f4bb; nid_create_time=1758615331562; gvi=dY31ZyFIf8MvO81gcabab0df7; gvi_create_time=1758615331562; fullscreengg=1; fullscreengg2=1; st_si=43906420464442; st_asi=delete; websitepoptg_api_time=1762307042177; st_pvi=14312856405691; st_sp=2025-09-23%2016%3A15%3A31; st_inirUrl=https%3A%2F%2Fcn.bing.com%2F; st_sn=6; st_psi=20251105134032819-113200301354-1478559724`
         },
         timeout: 10000,
       });
@@ -282,19 +297,27 @@ export class StockDataService {
     timeFrame?: TimeFrame,
     adapterName?: string
   ): Promise<CustomStockData[]> {
-    const results: CustomStockData[] = [];
+    const adapter = adapterName 
+      ? this.adapterFactory.getAdapter(adapterName)
+      : this.adapterFactory.autoSelectAdapter(symbols[0] || '');
+
+    // 创建限流任务列表
+    const tasks = symbols.map(symbol => 
+      EastMoneyDataAdapter.rateLimiter(async () => {
+        try {
+          return await adapter.fetchData(symbol, startDate, endDate, timeFrame);
+        } catch (error) {
+          console.error(`Failed to fetch data for ${symbol}:`, error);
+          return null; // 返回 null 表示失败
+        }
+      })
+    );
+
+    // 并发执行所有任务（限流由 p-limit 控制）
+    const results = await Promise.all(tasks);
     
-    for (const symbol of symbols) {
-      try {
-        const data = await this.getStockData(symbol, startDate, endDate, timeFrame, adapterName);
-        results.push(data);
-      } catch (error) {
-        console.error(`Failed to fetch data for ${symbol}:`, error);
-        // 继续处理其他股票
-      }
-    }
-    
-    return results;
+    // 过滤掉失败的结果
+    return results.filter((result): result is CustomStockData => result !== null);
   }
 
   // 获取适配器工厂
